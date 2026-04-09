@@ -35,3 +35,17 @@ def check_access(user, client_id, allowed_clients):
     return client_id in allowed_clients
 
 
+@app.get("/api/cases")
+def list_cases(
+    limit: int = 20,
+    offset: int = 0,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    query = select(DenialCase)
+
+    if user.role == "agent":
+        allowed_clients = get_user_client_ids(session, user.id)
+        query = query.where(DenialCase.client_id.in_(allowed_clients))
+
+    return session.exec(query.offset(offset).limit(limit)).all()
