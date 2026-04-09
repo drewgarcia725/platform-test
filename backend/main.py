@@ -35,6 +35,13 @@ def check_access(user, client_id, allowed_clients):
     return client_id in allowed_clients
 
 
+def test_agent_cannot_access_other_client_case():
+    # pseudo-code
+    response = client.get("/api/cases/{case_from_other_client}",
+        headers={"X-User-Id": agent_id})
+
+    assert response.status_code == 403
+
 @app.get("/api/cases")
 def list_cases(
     limit: int = 20,
