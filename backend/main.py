@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, Header, HTTPException
 from sqlmodel import Session, select
 from database import get_session, init_db
 from uuid import UUID
+from typing import List
 from models import *
 
 app = FastAPI()
@@ -32,7 +33,7 @@ def get_current_user(
 def get_user(session, user_id):
     return session.get(User, user_id)
 
-def get_user_client_ids(session, user_id: UUID):
+def get_user_client_ids(session: Session, user_id: UUID) -> List[UUID]:
     results = session.exec(
         select(UserClientAssignment.client_id).where(
             UserClientAssignment.user_id == user_id
