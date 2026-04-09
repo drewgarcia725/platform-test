@@ -3,7 +3,6 @@ from sqlmodel import Session, select
 from database import get_session, init_db
 from uuid import UUID
 from models import *
-from typing import Optional
 
 app = FastAPI()
 
@@ -48,13 +47,6 @@ def check_access(user, client_id, allowed_clients):
     return client_id in allowed_clients
 
 
-def test_agent_cannot_access_other_client_case():
-    # pseudo-code
-    response = client.get("/api/cases/{case_from_other_client}",
-        headers={"X-User-Id": agent_id})
-
-    assert response.status_code == 403
-
 @app.get("/api/cases")
 def list_cases(
     limit: int = 20,
@@ -75,19 +67,39 @@ def list_cases(
     return session.exec(query.offset(offset).limit(limit)).all()
 
 @app.get("/api/cases/{case_id}")
-def get_case(case_id: str, session: Session = Depends(get_session), user: User = Depends(get_user)):
+def get_case(
+    case_id: UUID,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
     case = session.get(DenialCase, case_id)
+
     if not case:
         raise HTTPException(status_code=404)
-    if user.role == "agent" and case.client_id not in [uc.client_id for uc in user.assignments]:
-        raise HTTPException(status_code=403)
+
+    if user.role == "agent":
+        allowed_clients = get_user_client_ids(session, user.id)
+        if case.client_id not in allowed_clients:
+            raise HTTPException(status_code=403)
+
     return case
 
+
+
 @app.post("/api/cases")
-def create_case(case: DenialCase, session: Session = Depends(get_session), user: User = Depends(get_user)):
-    if user.role == "agent" and case.client_id not in [uc.client_id for uc in user.assignments]:
-        raise HTTPException(status_code=403)
+def create_case(
+    case: DenialCase,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    if user.role == "agent":
+        allowed_clients = get_user_client_ids(session, user.id)
+
+        if case.client_id not in allowed_clients:
+            raise HTTPException(status_code=403)
+
     session.add(case)
     session.commit()
     session.refresh(case)
+
     return case
