@@ -49,3 +49,21 @@ def list_cases(
         query = query.where(DenialCase.client_id.in_(allowed_clients))
 
     return session.exec(query.offset(offset).limit(limit)).all()
+
+@app.get("/api/cases/{case_id}")
+def get_case(case_id: str, session: Session = Depends(get_session), user: User = Depends(get_user)):
+    case = session.get(DenialCase, case_id)
+    if not case:
+        raise HTTPException(status_code=404)
+    if user.role == "agent" and case.client_id not in [uc.client_id for uc in user.assignments]:
+        raise HTTPException(status_code=403)
+    return case
+
+@app.post("/api/cases")
+def create_case(case: DenialCase, session: Session = Depends(get_session), user: User = Depends(get_user)):
+    if user.role == "agent" and case.client_id not in [uc.client_id for uc in user.assignments]:
+        raise HTTPException(status_code=403)
+    session.add(case)
+    session.commit()
+    session.refresh(case)
+    return case
