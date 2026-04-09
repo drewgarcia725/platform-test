@@ -4,8 +4,17 @@ from database import get_session, init_db
 from uuid import UUID
 from typing import List
 from models import *
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class CaseCreate(BaseModel):
+    client_id: UUID
+    case_number: str
+    payer_name: str
+    denied_amount: float
+    status: str
+    priority: int
 
 @app.on_event("startup")
 def on_startup():
@@ -89,7 +98,7 @@ def get_case(
 
 @app.post("/api/cases")
 def create_case(
-    case: DenialCase,
+    case: CaseCreate,
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user)
 ):
@@ -99,8 +108,10 @@ def create_case(
         if case.client_id not in allowed_clients:
             raise HTTPException(status_code=403)
 
-    session.add(case)
-    session.commit()
-    session.refresh(case)
+    new_case = DenialCase(**case.dict())
 
-    return case
+    session.add(new_case)
+    session.commit()
+    session.refresh(new_case)
+
+    return new_case
