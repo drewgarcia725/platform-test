@@ -27,3 +27,16 @@ class DenialCase(SQLModel, table=True):
     status: str  # new | in_review | approved | closed
     priority: int
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+def get_user(session, user_id):
+    return session.get(User, user_id)
+
+def get_user_client_ids(session, user_id):
+    assignments = session.query(UserClientAssignment).filter_by(user_id=user_id).all()
+    return [a.client_id for a in assignments]
+
+def check_access(user, client_id, allowed_clients):
+    if user.role == "director":
+        return True
+    return client_id in allowed_clients
