@@ -55,6 +55,10 @@ def list_cases(
 
     if user.role == "agent":
         allowed_clients = get_user_client_ids(session, user.id)
+
+        if not allowed_clients:
+            return []
+
         query = query.where(DenialCase.client_id.in_(allowed_clients))
 
     return session.exec(query.offset(offset).limit(limit)).all()
